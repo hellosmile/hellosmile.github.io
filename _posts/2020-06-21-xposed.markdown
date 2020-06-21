@@ -47,8 +47,8 @@ hookMethodNative 是 XposedBridge.jar 中的私有的本地方法，它将一个
 [Xposed检测示例](https://github.com/hellosmile/Xposed)
 
 ### 参考资料
-[Xposed Module Repository][Xposed Module Repository]
-[Android Hook技术防范漫谈][Android Anti Hooking]
+* [Xposed Module Repository][Xposed Module Repository]
+* [Android Hook技术防范漫谈][Android Anti Hooking]
 
 [XposedInstaller]: https://forum.xda-developers.com/showthread.php?p=58828974#post58828974
 [Xposed Module Repository]: https://repo.xposed.info/
