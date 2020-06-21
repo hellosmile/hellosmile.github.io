@@ -1,0 +1,55 @@
+---
+layout: post
+title:  "Xposed"
+date:   2020-06-21 17:42:36 +0530
+---
+
+### 简介
+Xposed 框架 Android 中 Hook 技术的一个著名框架，还有一个框架是 CydiaSubstrate，但是这个框架是收费的，而 Xposed 框架是免费的且是开源的。
+
+### Xposed Installer
+#### 原理
+##### Zygote
+在 Android 系统中 App 进程都是由 Zygote 进程孵化出来的。Zygote 进程在启动时会创建一个虚拟机实例，每当它孵化一个新的应用程序进程时，都会将这个 Dalvik 虚拟机实例复制到新的App进程里面去，从而使每个App进程都有一个独立的 Dalvik 虚拟机实例。
+
+Zygote 进程在启动的过程中，除了会创建一个虚拟机实例之外还会将 Java Runtime 加载到进程中并注册一些 Android 核心类的 JNI（Java Native Interface，Java本地接口）方法。一个 App 进程被 Zygote 进程孵化出来的时候，不仅会获得 Zygote 进程中的虚拟机实例拷贝，还会与 Zygote 进程一起共享 Java Runtime，也就是可以将 XposedBridge.jar 这个 Jar 包加载到每一个 Android App  进程中去。安装 Xposed Installer 之后，系统 app_process 将被替换，然后利用 Java 的 Reflection 机制复写内置方法，实现功能劫持。
+##### Hook 和 Replace
+Xposed 框架中真正起作用的是对方法的 Hook 和 Replace。在 Android 系统启动的时候，Zygote 进程加载 XposedBridge.jar，将所有需要替换的 Method 通过 JNI 方法 hookMethodNative 指向  Native 方法 xposedCallHandler，这个方法再通过调用 handleHookedMethod 这个 Java 方法来调用被劫持的方法转入 Hook 逻辑。
+
+hookMethodNative 是 XposedBridge.jar 中的私有的本地方法，它将一个方法对象作为传入参数并修改 Dalvik 虚拟机中对于该方法的定义，把该方法的类型改变为 Native 并将其实现指向另外一个 B 方法。
+
+换言之，当调用那个被 Hook 的 A 方法时，其实调用的是 B 方法，调用者是不知道的。在 hookMethodNative 的实现中，会调用 XposedBridge.jar 中的 handleHookedMethod 这个方法来传递参数。handleHookedMethod 这个方法类似于一个统一调度的 Dispatch 例程，其对应的底层的 C++ 函数是 xposedCallHandler。而 handleHookedMethod 实现里面会根据一个全局结构 hookedMethodCallbacks 来选择相应的Hook函数并调用他们的 before 和 after 函数，当多模块同时 Hook 一个方法的时候 Xposed 会自动根据 Module 的优先级来排序。
+
+调用顺序如下：A.before -> B.before -> original method -> B.after -> A.after。
+
+#### 安装
+* XposedInstaller 安装
+这个方法需要 root，而且比较智能简单。首先下载并安装好 [XposedInstaller][XposedInstaller]；进入到主页面后，会显示 Xposed框架未激活，点击 install 等待下载完后会自动下载安装，最后重启手机即可。
+
+* 通过第三方 recovery 手动刷入 zip 安装包，[Flashed with a custom recovery][XposedInstaller]
+
+#### 编写功能模块
+[Xposed模块示例](https://github.com/hellosmile/Xposed)
+
+
+### 检测
+在做 Android App 的安全防御中检测点众多，Xposed Installer 检测是必不可少的一环。对于 Xposed 框架的防御总体上分为两层：Java 层和 Native 层。
+
+#### Java层检测
+* 通过PackageManager查看安装列表
+* 自造异常读取栈
+* 检查关键Java方法被变为Native JNI方法
+* 反射读取XposedHelper类字段
+
+#### Native层检测
+
+#### 检测功能模块
+[Xposed检测示例](https://github.com/hellosmile/Xposed)
+
+### 参考资料
+[Xposed Module Repository][Xposed Module Repository]
+[Android Hook技术防范漫谈][Android Anti Hooking]
+
+[XposedInstaller]: https://forum.xda-developers.com/showthread.php?p=58828974#post58828974
+[Xposed Module Repository]: https://repo.xposed.info/
+[Android Anti Hooking]: https://tech.meituan.com/2018/02/02/android-anti-hooking.html
